@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Word自动完成插件</title>
+
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+
+    <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
+    <link rel="stylesheet" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css"/>
+
+    <!-- Template styles -->
+    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body class="ms-font-m ms-Fabric">
+    <div id="sideload-msg" class="ms-welcome__main">
+        <h2 class="ms-font-xl">请先加载插件。</h2>
+    </div>
+
+    <main id="app-body" style="display: none;">
+        <div id="message" class="message" style="display: none;"></div>
+
+        <!-- 配置表单 -->
+        <div id="config-form">
+            <div class="config-header">
+                <h2 class="ms-font-xl">配置</h2>
+                <button id="toggle-config" class="ms-Button">
+                    <span class="ms-Button-label">折叠</span>
+                </button>
+            </div>
+            <div id="config-content">
+            
+            <div class="form-group">
+                <label for="provider">AI服务提供商</label>
+                <select id="provider" class="ms-TextField-field">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="openroute">OpenRoute</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="api-key">API密钥</label>
+                <input type="password" id="api-key" class="ms-TextField-field" placeholder="输入API密钥" />
+            </div>
+
+            <div class="form-group">
+                <label for="model">模型</label>
+                <select id="model" class="ms-TextField-field">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="max-tokens">最大生成长度</label>
+                <input type="number" id="max-tokens" class="ms-TextField-field" value="150" />
+            </div>
+
+            <div class="form-group">
+                <label for="temperature">温度</label>
+                <input type="number" id="temperature" class="ms-TextField-field" value="0.7" step="0.1" min="0" max="2" />
+            </div>
+
+            <div class="form-group">
+                <label for="trigger-mode">触发模式</label>
+                <select id="trigger-mode" class="ms-TextField-field">
+                    <option value="manual">手动</option>
+                    <option value="auto">自动</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="context-range">上下文范围</label>
+                <select id="context-range" class="ms-TextField-field">
+                    <option value="paragraph">当前段落</option>
+                    <option value="document">整个文档</option>
+                    <option value="custom">自定义段落数</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="custom-paragraphs">自定义段落数</label>
+                <input type="number" id="custom-paragraphs" class="ms-TextField-field" value="3" min="1" max="10" />
+            </div>
+
+            <div class="form-group">
+                <label for="max-context">最大上下文长度</label>
+                <input type="number" id="max-context" class="ms-TextField-field" value="2000" />
+            </div>
+
+            <div class="form-group">
+                <label for="debounce">防抖延迟(ms)</label>
+                <input type="number" id="debounce" class="ms-TextField-field" value="1000" />
+            </div>
+
+            <div class="form-group">
+                <label for="trigger-delay">触发延迟(ms)</label>
+                <input type="number" id="trigger-delay" class="ms-TextField-field" value="2000" min="0" max="10000" step="100" />
+                <div class="field-description">输入停止后多久触发自动补全建议</div>
+            </div>
+
+            <div class="form-group">
+                <label for="system-prompt">系统提示词</label>
+                <textarea id="system-prompt" class="ms-TextField-field" rows="4" 
+                    placeholder="你是一个专业文档助手，负责根据上下文生成连贯、自然的后续内容。生成内容应与前文风格一致，并保持逻辑连贯性。请直接输出续写内容，无需解释或添加其他信息。"></textarea>
+            </div>
+        </div>
+
+        <!-- 配置控制 -->
+        <div class="button-group">
+            <button id="save-config" class="ms-Button">
+                <span class="ms-Button-label">保存配置</span>
+            </button>
+            <button id="start-auto" class="ms-Button ms-Button--primary">
+                <span class="ms-Button-label">启动</span>
+            </button>
+        </div>
+
+        <!-- 运行时控制 -->
+        <div id="running-controls" style="display: none;">
+            <div class="button-group">
+                <button id="trigger-completion" class="ms-Button">
+                    <span class="ms-Button-label">触发补全</span>
+                </button>
+                <button id="stop-auto" class="ms-Button ms-Button--primary">
+                    <span class="ms-Button-label">停止</span>
+                </button>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

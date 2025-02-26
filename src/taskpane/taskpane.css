@@ -1,0 +1,234 @@
+:root {
+    --primary-color: #0078d4;
+    --primary-hover-color: #106ebe;
+    --border-color: #edebe9;
+    --text-color: #323130;
+    --success-color: #107c10;
+    --error-color: #a80000;
+    --background-color: #f8f9fa;
+    --card-background: #ffffff;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#app-body {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#config-form {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    margin-bottom: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+#config-form:hover {
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background-color: var(--background-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.config-header h2 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+#config-content {
+    padding: 24px;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+#config-content.collapsed {
+    max-height: 0;
+    padding: 0 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.field-description {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.ms-TextField-field {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.ms-TextField-field:hover {
+    border-color: var(--primary-color);
+}
+
+.ms-TextField-field:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.1);
+}
+
+select.ms-TextField-field {
+    height: 40px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px;
+    padding-right: 30px;
+}
+
+textarea.ms-TextField-field {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+.button-group {
+    width: 100%;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+#running-controls {
+    width: 100%;
+    background-color: var(--card-background);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    transition: all 0.3s ease;
+}
+
+#running-controls:hover {
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+#running-controls .button-group {
+    margin-top: 0;
+}
+
+.message {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: slideDown 0.3s ease forwards;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    max-width: 90%;
+}
+
+@keyframes slideDown {
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.message.success {
+    background-color: #dff6dd;
+    color: var(--success-color);
+    border: 1px solid var(--success-color);
+}
+
+.message.error {
+    background-color: #fde7e9;
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
+}
+
+.ms-Button {
+    min-width: 100px;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ms-Button:hover {
+    transform: translateY(-1px);
+}
+
+.ms-Button--primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.ms-Button--primary:hover {
+    background-color: var(--primary-hover-color);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.ms-Button:not(.ms-Button--primary) {
+    background-color: white;
+    border-color: var(--border-color);
+}
+
+.ms-Button:not(.ms-Button--primary):hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.ms-Button:active {
+    transform: translateY(1px);
+}
