@@ -21,7 +21,8 @@ interface LLMModel {
 
 export class LLMService {
   private config: LLMConfig;
-  private defaultPrompt = "You are a professional document assistant. Please continue the text based on the context, maintaining consistency in style and logic. Provide only the continuation without explanations.";
+  private defaultPrompt =
+    "You are a professional document assistant. Please continue the text based on the context, maintaining consistency in style and logic. Provide only the continuation without explanations.";
 
   constructor(config: LLMConfig) {
     this.config = {
@@ -57,7 +58,7 @@ export class LLMService {
     const response = await fetch("https://api.openai.com/v1/models", {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
     });
 
@@ -67,16 +68,12 @@ export class LLMService {
 
     const data = await response.json();
     return data.data
-      .filter((model: any) => 
-        model.id.startsWith("gpt-") && !model.id.includes("instruct")
-      )
+      .filter((model: any) => model.id.startsWith("gpt-") && !model.id.includes("instruct"))
       .map((model: any) => ({
         id: model.id,
         name: model.id,
         description: "OpenAI GPT Model",
-        context_length: model.id.includes("32k") ? 32768 : 
-                       model.id.includes("16k") ? 16384 : 
-                       4096,
+        context_length: model.id.includes("32k") ? 32768 : model.id.includes("16k") ? 16384 : 4096,
       }))
       .sort((a: LLMModel, b: LLMModel) => b.context_length - a.context_length);
   }
@@ -106,8 +103,8 @@ export class LLMService {
     const response = await fetch("https://openrouter.ai/api/v1/models", {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${this.config.apiKey}`,
-        "HTTP-Referer": "https://github.com/yourusername/word-llm-autocomplete",
+        Authorization: `Bearer ${this.config.apiKey}`,
+        "HTTP-Referer": "https://github.com/cookjohn/autocomp",
         "X-Title": "Word LLM AutoComplete",
       },
     });
@@ -117,17 +114,18 @@ export class LLMService {
     }
 
     const data = await response.json();
-    return data.data.map((model: any) => ({
-      id: model.id,
-      name: `${model.name} (${model.context_length}tokens)`,
-      description: model.description || "",
-      context_length: model.context_length,
-      pricing: {
-        prompt: model.pricing?.prompt || "Unknown",
-        completion: model.pricing?.completion || "Unknown",
-      },
-    }))
-    .sort((a: LLMModel, b: LLMModel) => b.context_length - a.context_length);
+    return data.data
+      .map((model: any) => ({
+        id: model.id,
+        name: `${model.name} (${model.context_length}tokens)`,
+        description: model.description || "",
+        context_length: model.context_length,
+        pricing: {
+          prompt: model.pricing?.prompt || "Unknown",
+          completion: model.pricing?.completion || "Unknown",
+        },
+      }))
+      .sort((a: LLMModel, b: LLMModel) => b.context_length - a.context_length);
   }
 
   private async getGeminiModels(): Promise<LLMModel[]> {
@@ -182,7 +180,7 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify({
         model: this.config.model,
@@ -222,8 +220,8 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.config.apiKey}`,
-        "HTTP-Referer": "https://github.com/yourusername/word-llm-autocomplete",
+        Authorization: `Bearer ${this.config.apiKey}`,
+        "HTTP-Referer": "https://github.com/cookjohn/autocomp",
         "X-Title": "Word LLM AutoComplete",
       },
       body: JSON.stringify({
@@ -259,11 +257,10 @@ export class LLMService {
       throw new Error("Gemini requires a model selection");
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/${this.config.model}:generateContent`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/${this.config.model}:generateContent?key=${this.config.apiKey}`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": this.config.apiKey,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         contents: [
@@ -347,7 +344,7 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify({
         prompt: `${this.config.systemPrompt}\n\nCurrent content:\n${context}\n\nContinue:`,

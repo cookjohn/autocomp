@@ -5,16 +5,16 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" 
   xsi:type="TaskPaneApp">
   <Id>c12b22b0-80ad-44b2-bb90-230071bc929b</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.0.1.0</Version>
   <ProviderName>Contoso</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="autocomp"/>
-  <Description DefaultValue="A template to get started."/>
+  <DisplayName DefaultValue="LLM-Completion"/>
+  <Description DefaultValue="A auto completion add-in for Word."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
-  <SupportUrl DefaultValue="https://www.contoso.com/help"/>
+  <SupportUrl DefaultValue="https://autoagent.my/help"/>
   <AppDomains>
-    <AppDomain>https://www.contoso.com</AppDomain>
+    <AppDomain>https://autoagent.my</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Document"/>
