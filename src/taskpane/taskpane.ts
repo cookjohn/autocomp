@@ -74,11 +74,31 @@ const ConfigManager = {
         | "inline",
       apiConfig: {
         provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
-        apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-        model: (document.getElementById("model") as HTMLSelectElement).value,
         maxTokens: parseInt((document.getElementById("max-tokens") as HTMLInputElement).value) || 150,
         temperature: parseFloat((document.getElementById("temperature") as HTMLInputElement).value) || 0.7,
         systemPrompt: (document.getElementById("system-prompt") as HTMLTextAreaElement).value,
+        providerConfigs: {
+          openai: {
+            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+            model: (document.getElementById("model") as HTMLSelectElement).value,
+          },
+          anthropic: {
+            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+            model: (document.getElementById("model") as HTMLSelectElement).value,
+          },
+          openroute: {
+            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+            model: (document.getElementById("model") as HTMLSelectElement).value,
+          },
+          gemini: {
+            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+            model: (document.getElementById("model") as HTMLSelectElement).value,
+          },
+          custom: {
+            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+            model: (document.getElementById("model") as HTMLSelectElement).value,
+          },
+        },
       },
     };
   },
@@ -119,12 +139,24 @@ const ConfigManager = {
       suggestionPosition: "sidebar",
       apiConfig: {
         provider: "openai",
-        apiKey: "",
         maxTokens: 150,
         temperature: 0.7,
         systemPrompt: "",
+        providerConfigs: {
+          openai: { apiKey: "", model: "" },
+          anthropic: { apiKey: "", model: "" },
+          openroute: { apiKey: "", model: "" },
+          gemini: { apiKey: "", model: "" },
+          custom: { apiKey: "", model: "" },
+        },
       },
     };
+  },
+
+  // 获取当前provider的配置
+  getCurrentProviderConfig(config: AutoCompleteConfig) {
+    const provider = config.apiConfig.provider;
+    return config.apiConfig.providerConfigs[provider];
   },
 };
 
@@ -134,12 +166,30 @@ async function updateModelList(): Promise<void> {
     const modelElement = document.getElementById("model") as HTMLSelectElement;
     modelElement.innerHTML = "<option value=''>加载中...</option>";
 
-    if (!config.apiConfig.apiKey) {
+    const provider = config.apiConfig.provider;
+    const apiKey = (document.getElementById("api-key") as HTMLInputElement).value;
+
+    if (!apiKey) {
       modelElement.innerHTML = "<option value=''>请先填写API密钥</option>";
       return;
     }
 
-    llmService = new LLMService(config.apiConfig);
+    // 使用当前表单的值创建配置
+    const currentConfig = {
+      ...config,
+      apiConfig: {
+        ...config.apiConfig,
+        providerConfigs: {
+          ...config.apiConfig.providerConfigs,
+          [provider]: {
+            ...config.apiConfig.providerConfigs[provider],
+            apiKey: apiKey,
+          },
+        },
+      },
+    };
+
+    llmService = new LLMService(currentConfig.apiConfig);
     const models = await llmService.getAvailableModels();
     if (!models.length) {
       modelElement.innerHTML = "<option value=''>未找到可用模型</option>";
@@ -148,7 +198,8 @@ async function updateModelList(): Promise<void> {
 
     const sortedModels = models.sort((a, b) => a.name.localeCompare(b.name));
     const savedConfig = ConfigManager.getSavedConfig();
-    const savedModel = savedConfig?.apiConfig.model;
+    const savedProviderConfig = savedConfig?.apiConfig.providerConfigs[provider];
+    const savedModel = savedProviderConfig?.model;
 
     // 生成模型列表选项
     const options = sortedModels.map(
@@ -160,7 +211,7 @@ async function updateModelList(): Promise<void> {
       modelElement.innerHTML = options.join("");
       modelElement.value = savedModel;
       // 保存当前配置
-      config.apiConfig.model = savedModel;
+      config.apiConfig.providerConfigs[provider].model = savedModel;
       ConfigManager.updateConfig(config);
     } else if (savedModel) {
       // 如果上次使用的模型不在列表中，显示提示
@@ -191,7 +242,7 @@ async function loadSavedConfig(): Promise<void> {
     debounce: config.debounceMs?.toString(),
     "trigger-delay": config.triggerDelayMs?.toString(),
     "suggestion-position": config.suggestionPosition,
-    "api-key": config.apiConfig.apiKey,
+    "api-key": config.apiConfig.providerConfigs[config.apiConfig.provider].apiKey,
     "max-tokens": config.apiConfig.maxTokens?.toString(),
     temperature: config.apiConfig.temperature?.toString(),
     "system-prompt": config.apiConfig.systemPrompt,
@@ -229,11 +280,31 @@ function getConfig(): AutoCompleteConfig {
       | "inline",
     apiConfig: {
       provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
-      apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-      model: (document.getElementById("model") as HTMLSelectElement).value,
       maxTokens: parseInt((document.getElementById("max-tokens") as HTMLInputElement).value) || 150,
       temperature: parseFloat((document.getElementById("temperature") as HTMLInputElement).value) || 0.7,
       systemPrompt: (document.getElementById("system-prompt") as HTMLTextAreaElement).value,
+      providerConfigs: {
+        openai: {
+          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+          model: (document.getElementById("model") as HTMLSelectElement).value,
+        },
+        anthropic: {
+          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+          model: (document.getElementById("model") as HTMLSelectElement).value,
+        },
+        openroute: {
+          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+          model: (document.getElementById("model") as HTMLSelectElement).value,
+        },
+        gemini: {
+          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+          model: (document.getElementById("model") as HTMLSelectElement).value,
+        },
+        custom: {
+          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
+          model: (document.getElementById("model") as HTMLSelectElement).value,
+        },
+      },
     },
   };
 }
@@ -243,12 +314,15 @@ async function startAutoComplete(): Promise<void> {
     const config = getConfig();
 
     // 检查必要的配置
-    if (!config.apiConfig.apiKey) {
+    const provider = config.apiConfig.provider;
+    const providerConfig = config.apiConfig.providerConfigs[provider];
+
+    if (!providerConfig.apiKey) {
       showMessage("请输入API密钥", "error");
       return;
     }
 
-    if (!config.apiConfig.model) {
+    if (!providerConfig.model) {
       showMessage("请选择模型", "error");
       return;
     }
@@ -279,9 +353,6 @@ async function startAutoComplete(): Promise<void> {
       }
       return;
     }
-
-    // 保存配置
-    ConfigManager.saveConfig(config);
 
     // 初始化自动完成引擎
     autoCompleteEngine = new AutoCompleteEngine(config);

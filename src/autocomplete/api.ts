@@ -1,11 +1,17 @@
+interface ProviderConfig {
+  apiKey: string;
+  model: string;
+  endpoint?: string;
+}
+
 interface LLMConfig {
   provider: "openai" | "anthropic" | "openroute" | "gemini" | "custom";
-  apiKey: string;
-  endpoint?: string;
   maxTokens: number;
   temperature: number;
-  model?: string;
   systemPrompt?: string;
+  providerConfigs: {
+    [key in "openai" | "anthropic" | "openroute" | "gemini" | "custom"]: ProviderConfig;
+  };
 }
 
 interface LLMModel {
@@ -55,10 +61,11 @@ export class LLMService {
   }
 
   private async getOpenAIModels(): Promise<LLMModel[]> {
+    const openaiConfig = this.config.providerConfigs.openai;
     const response = await fetch("https://api.openai.com/v1/models", {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${openaiConfig.apiKey}`,
       },
     });
 
@@ -79,10 +86,11 @@ export class LLMService {
   }
 
   private async getAnthropicModels(): Promise<LLMModel[]> {
+    const anthropicConfig = this.config.providerConfigs.anthropic;
     const response = await fetch("https://api.anthropic.com/v1/models", {
       method: "GET",
       headers: {
-        "x-api-key": this.config.apiKey,
+        "x-api-key": anthropicConfig.apiKey,
       },
     });
 
@@ -100,10 +108,11 @@ export class LLMService {
   }
 
   private async getOpenRouteModels(): Promise<LLMModel[]> {
+    const openrouteConfig = this.config.providerConfigs.openroute;
     const response = await fetch("https://openrouter.ai/api/v1/models", {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${openrouteConfig.apiKey}`,
         "HTTP-Referer": "https://github.com/cookjohn/autocomp",
         "X-Title": "Word LLM AutoComplete",
       },
@@ -129,7 +138,8 @@ export class LLMService {
   }
 
   private async getGeminiModels(): Promise<LLMModel[]> {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${this.config.apiKey}`, {
+    const geminiConfig = this.config.providerConfigs.gemini;
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiConfig.apiKey}`, {
       method: "GET",
     });
 
@@ -172,7 +182,8 @@ export class LLMService {
   }
 
   private async completeWithOpenAI(context: string): Promise<string> {
-    if (!this.config.model) {
+    const openaiConfig = this.config.providerConfigs.openai;
+    if (!openaiConfig.model) {
       throw new Error("OpenAI requires a model selection");
     }
 
@@ -180,10 +191,10 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${openaiConfig.apiKey}`,
       },
       body: JSON.stringify({
-        model: this.config.model,
+        model: openaiConfig.model,
         messages: [
           {
             role: "system",
@@ -212,7 +223,8 @@ export class LLMService {
   }
 
   private async completeWithOpenRoute(context: string): Promise<string> {
-    if (!this.config.model) {
+    const openrouteConfig = this.config.providerConfigs.openroute;
+    if (!openrouteConfig.model) {
       throw new Error("OpenRoute requires a model selection");
     }
 
@@ -220,12 +232,12 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${openrouteConfig.apiKey}`,
         "HTTP-Referer": "https://github.com/cookjohn/autocomp",
         "X-Title": "Word LLM AutoComplete",
       },
       body: JSON.stringify({
-        model: this.config.model,
+        model: openrouteConfig.model,
         messages: [
           {
             role: "system",
@@ -253,24 +265,22 @@ export class LLMService {
   }
 
   private async completeWithGemini(context: string): Promise<string> {
-    if (!this.config.model) {
+    const geminiConfig = this.config.providerConfigs.gemini;
+    if (!geminiConfig.model) {
       throw new Error("Gemini requires a model selection");
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/${this.config.model}:generateContent?key=${this.config.apiKey}`, {
+    const url = `https://generativelanguage.googleapis.com/v1/${geminiConfig.model}:generateContent?key=${geminiConfig.apiKey}`;
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [
           {
             role: "user",
-            parts: [
-              {
-                text: `${this.config.systemPrompt}\n\nCurrent content:\n${context}\n\nContinue:`,
-              },
-            ],
+            parts: [{ text: `${this.config.systemPrompt}\n\nCurrent content:\n${context}\n\nContinue:` }],
           },
         ],
         generationConfig: {
@@ -279,22 +289,10 @@ export class LLMService {
           topP: 0.95,
         },
         safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
         ],
       }),
     });
@@ -308,7 +306,8 @@ export class LLMService {
   }
 
   private async completeWithAnthropic(context: string): Promise<string> {
-    if (!this.config.model) {
+    const anthropicConfig = this.config.providerConfigs.anthropic;
+    if (!anthropicConfig.model) {
       throw new Error("Anthropic requires a model selection");
     }
 
@@ -316,10 +315,10 @@ export class LLMService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": this.config.apiKey,
+        "X-API-Key": anthropicConfig.apiKey,
       },
       body: JSON.stringify({
-        model: this.config.model,
+        model: anthropicConfig.model,
         prompt: `${this.config.systemPrompt}\n\nCurrent content:\n${context}\n\nContinue:`,
         max_tokens_to_sample: this.config.maxTokens,
         temperature: this.config.temperature,
@@ -336,15 +335,16 @@ export class LLMService {
   }
 
   private async completeWithCustomAPI(context: string): Promise<string> {
-    if (!this.config.endpoint) {
+    const customConfig = this.config.providerConfigs.custom;
+    if (!customConfig.endpoint) {
       throw new Error("Custom API requires an endpoint");
     }
 
-    const response = await fetch(this.config.endpoint, {
+    const response = await fetch(customConfig.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${customConfig.apiKey}`,
       },
       body: JSON.stringify({
         prompt: `${this.config.systemPrompt}\n\nCurrent content:\n${context}\n\nContinue:`,

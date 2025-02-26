@@ -5,6 +5,12 @@ import { AutoCompleteContext } from "./context";
 import { LLMService } from "./api";
 import { SuggestionManager } from "./suggestion";
 
+interface ProviderConfig {
+  apiKey: string;
+  model: string;
+  endpoint?: string;
+}
+
 export interface AutoCompleteConfig {
   triggerMode: "auto" | "manual";
   contextRange: "paragraph" | "document" | "custom";
@@ -15,12 +21,16 @@ export interface AutoCompleteConfig {
   suggestionPosition: "sidebar" | "inline"; // 建议显示位置
   apiConfig: {
     provider: "openai" | "anthropic" | "openroute" | "gemini" | "custom";
-    apiKey: string;
-    endpoint?: string;
     maxTokens: number;
     temperature: number;
-    model?: string;
     systemPrompt?: string; // 自定义系统提示词
+    providerConfigs: {
+      openai: ProviderConfig;
+      anthropic: ProviderConfig;
+      openroute: ProviderConfig;
+      gemini: ProviderConfig;
+      custom: ProviderConfig;
+    };
   };
 }
 
