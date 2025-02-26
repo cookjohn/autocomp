@@ -1,0 +1,20 @@
+{
+    "actions": [
+        {
+            "id": "acceptSuggestion",
+            "type": "ExecuteFunction",
+            "name": "Accept auto-complete suggestion"
+        }
+    ],
+    "shortcuts": [
+        {
+            "action": "acceptSuggestion",
+            "key": {
+                "default": "Alt+D",
+                "mac": "Alt+D",
+                "web": "Alt+D",
+                "windows": "Alt+D"
+            }
+        }
+    ]
+}

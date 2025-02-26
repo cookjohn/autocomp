@@ -10,6 +10,7 @@ export interface AutoCompleteConfig {
   customParagraphs?: number;  // 自定义段落数
   debounceMs: number;
   triggerDelayMs: number;  // 触发延迟时间
+  suggestionPosition: "sidebar" | "inline";  // 建议显示位置
   apiConfig: {
     provider: "openai" | "anthropic" | "openroute" | "gemini" | "custom";
     apiKey: string;
@@ -34,6 +35,7 @@ export class AutoCompleteEngine {
       ...config,
       customParagraphs: config.customParagraphs || 3,  // 默认3段
       triggerDelayMs: config.triggerDelayMs || 2000,  // 默认2秒
+      suggestionPosition: config.suggestionPosition || "sidebar",  // 默认侧边栏悬浮窗
       apiConfig: {
         ...config.apiConfig,
         systemPrompt: config.apiConfig.systemPrompt ||
@@ -48,7 +50,9 @@ export class AutoCompleteEngine {
     });
 
     this.llmService = new LLMService(this.config.apiConfig);
-    this.suggestionManager = new SuggestionManager();
+    this.suggestionManager = new SuggestionManager({
+      displayMode: this.config.suggestionPosition
+    });
 
     // 防抖包装的补全请求
     this.debouncedRequestCompletion = debounce(
@@ -174,6 +178,9 @@ export class AutoCompleteEngine {
       ...this.config.apiConfig,
       systemPrompt: this.config.apiConfig.systemPrompt,
     });
+
+    // 更新建议显示位置
+    this.suggestionManager.updateDisplayMode(this.config.suggestionPosition);
 
     // 更新防抖函数
     this.debouncedRequestCompletion = debounce(

@@ -132,7 +132,13 @@ textarea.ms-TextField-field {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
+    margin: 24px 0;
+    box-sizing: border-box;
+    padding: 0 24px;
+}
+
+#config-content .button-group {
+    padding: 0;
 }
 
 #running-controls {

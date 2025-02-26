@@ -3,30 +3,35 @@
  * See LICENSE in the project root for license information.
  */
 
-/* global Office */
+/* global Office, console */
 
-Office.onReady(() => {
-  // If needed, Office.js is ready to be called.
-});
+import { AutoCompleteEngine } from "../autocomplete/engine";
 
-/**
- * Shows a notification when the add-in command is executed.
- * @param event
- */
-function action(event: Office.AddinCommands.Event) {
-  const message: Office.NotificationMessageDetails = {
-    type: Office.MailboxEnums.ItemNotificationMessageType.InformationalMessage,
-    message: "Performed action.",
-    icon: "Icon.80x80",
-    persistent: true,
-  };
+let autoCompleteEngine: AutoCompleteEngine | null = null;
 
-  // Show a notification message.
-  Office.context.mailbox.item.notificationMessages.replaceAsync("ActionPerformanceNotification", message);
-
-  // Be sure to indicate when the add-in command function is complete.
-  event.completed();
+export function setAutoCompleteEngine(engine: AutoCompleteEngine | null): void {
+  autoCompleteEngine = engine;
 }
 
-// Register the function with Office.
-Office.actions.associate("action", action);
+// 注册快捷键函数
+Office.onReady(() => {
+  // 注册快捷键处理函数
+  Office.actions.associate("acceptSuggestion", function (event: Office.AddinCommands.Event) {
+    console.log("Keyboard shortcut triggered: acceptSuggestion");
+
+    if (autoCompleteEngine) {
+      autoCompleteEngine.applySuggestion()
+        .then(() => {
+          console.log("Suggestion accepted successfully");
+          event.completed();
+        })
+        .catch((error) => {
+          console.error("Failed to accept suggestion:", error);
+          event.completed();
+        });
+    } else {
+      console.log("AutoCompleteEngine not initialized");
+      event.completed();
+    }
+  });
+});

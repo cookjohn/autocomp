@@ -3,6 +3,7 @@
 
 import { AutoCompleteEngine, AutoCompleteConfig } from "../autocomplete/engine";
 import { LLMService } from "../autocomplete/api";
+import { setAutoCompleteEngine } from "../commands/commands";
 
 type Provider = "openai" | "anthropic" | "openroute" | "gemini" | "custom";
 type ContextRange = "paragraph" | "document" | "custom";
@@ -116,6 +117,7 @@ async function initializeForm(): Promise<void> {
       "max-context": config.maxContextLength?.toString() || "2000",
       debounce: config.debounceMs?.toString() || "1000",
       "trigger-delay": config.triggerDelayMs?.toString() || "2000",
+      "suggestion-position": config.suggestionPosition || "sidebar",
       "system-prompt": config.apiConfig.systemPrompt || "",
     };
 
@@ -142,6 +144,7 @@ function getConfig(): AutoCompleteConfig {
     customParagraphs: parseInt((document.getElementById("custom-paragraphs") as HTMLInputElement).value) || 3,
     debounceMs: parseInt((document.getElementById("debounce") as HTMLInputElement).value) || 1000,
     triggerDelayMs: parseInt((document.getElementById("trigger-delay") as HTMLInputElement).value) || 2000,
+    suggestionPosition: (document.getElementById("suggestion-position") as HTMLSelectElement).value as "sidebar" | "inline",
     apiConfig: {
       provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
       apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
@@ -159,6 +162,7 @@ async function startAutoComplete(): Promise<void> {
     localStorage.setItem("autoCompleteConfig", JSON.stringify(config));
 
     autoCompleteEngine = new AutoCompleteEngine(config);
+    setAutoCompleteEngine(autoCompleteEngine);
     await autoCompleteEngine.initialize();
 
     const startButton = document.getElementById("start-auto");
@@ -191,6 +195,7 @@ function stopAutoComplete(): void {
   try {
     if (autoCompleteEngine) {
       autoCompleteEngine.dispose();
+      setAutoCompleteEngine(null);
       autoCompleteEngine = null;
     }
 

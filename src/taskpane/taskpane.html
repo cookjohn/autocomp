@@ -9,7 +9,7 @@
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-
+    
     <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
     <link rel="stylesheet" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css"/>
 
@@ -24,6 +24,9 @@
 
     <main id="app-body" style="display: none;">
         <div id="message" class="message" style="display: none;"></div>
+
+        <!-- 建议框容器 -->
+        <div id="suggestion-container"></div>
 
         <!-- 配置表单 -->
         <div id="config-form">
@@ -107,17 +110,29 @@
             </div>
 
             <div class="form-group">
+                <label for="suggestion-position">建议显示位置</label>
+                <select id="suggestion-position" class="ms-TextField-field">
+                    <option value="sidebar">侧边栏悬浮窗</option>
+                    <option value="inline">光标位置内联</option>
+                </select>
+                <div class="field-description">选择补全建议的显示方式</div>
+            </div>
+
+            <div class="form-group">
                 <label for="system-prompt">系统提示词</label>
                 <textarea id="system-prompt" class="ms-TextField-field" rows="4" 
                     placeholder="你是一个专业文档助手，负责根据上下文生成连贯、自然的后续内容。生成内容应与前文风格一致，并保持逻辑连贯性。请直接输出续写内容，无需解释或添加其他信息。"></textarea>
+                <!-- 配置控制 -->
+                <div class="button-group">
+                    <button id="save-config" class="ms-Button">
+                        <span class="ms-Button-label">保存配置</span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- 配置控制 -->
+        <!-- 启动控制 -->
         <div class="button-group">
-            <button id="save-config" class="ms-Button">
-                <span class="ms-Button-label">保存配置</span>
-            </button>
             <button id="start-auto" class="ms-Button ms-Button--primary">
                 <span class="ms-Button-label">启动</span>
             </button>

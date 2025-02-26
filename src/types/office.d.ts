@@ -1,9 +1,19 @@
 declare namespace Word {
   function run<T>(callback: (context: RequestContext) => Promise<T>): Promise<T>;
 
+  interface ClientObject {
+    context: RequestContext;
+  }
+
+  interface TrackedObjects {
+    add(object: ClientObject): void;
+    remove(object: ClientObject): void;
+  }
+
   interface RequestContext {
     document: Document;
     sync(): Promise<void>;
+    trackedObjects: TrackedObjects;
   }
 
   interface Document {

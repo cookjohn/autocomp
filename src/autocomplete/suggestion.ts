@@ -1,4 +1,4 @@
-/* global document, Office, Word, console, HTMLElement */
+/* global document, Word, console */
 
 interface SuggestionOptions {
   position?: {
@@ -7,9 +7,10 @@ interface SuggestionOptions {
   };
   style?: {
     maxWidth: string;
-    maxHeight: string;
+    maxHeight?: string;
     fontSize: string;
   };
+  displayMode?: "sidebar" | "inline";
 }
 
 export class SuggestionManager {
@@ -17,15 +18,17 @@ export class SuggestionManager {
   private suggestionDiv: HTMLElement | null = null;
   private defaultOptions: SuggestionOptions = {
     style: {
-      maxWidth: "300px",
-      maxHeight: "150px",
+      maxWidth: "100%",
       fontSize: "14px",
     },
+    displayMode: "sidebar",
   };
 
   constructor(options: Partial<SuggestionOptions> = {}) {
     this.defaultOptions = { ...this.defaultOptions, ...options };
-    this.initializeSuggestionUI();
+    if (this.defaultOptions.displayMode === "sidebar") {
+      this.initializeSuggestionUI();
+    }
   }
 
   private initializeSuggestionUI(): void {
@@ -37,9 +40,8 @@ export class SuggestionManager {
     const div = document.createElement("div");
     div.id = "auto-complete-suggestion";
     div.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
+      width: 100%;
+      box-sizing: border-box;
       background: white;
       border: 1px solid #e0e0e0;
       border-radius: 6px;
@@ -104,24 +106,59 @@ export class SuggestionManager {
     // 设置tabIndex使div可以获取焦点
     div.tabIndex = 0;
 
-    // 添加到文档
-    document.body.appendChild(div);
+    // 添加到建议框容器
+    const container = document.getElementById("suggestion-container");
+    if (container) {
+      container.appendChild(div);
+      div.style.position = "static";
+      div.style.margin = "0 0 20px 0";
+    }
     this.suggestionDiv = div;
   }
 
   public async showSuggestion(suggestion: string): Promise<void> {
-    if (!this.suggestionDiv) return;
+    if (this.defaultOptions.displayMode === "sidebar") {
+      // 清除之前的建议
+      await this.clearSuggestion();
+      this.currentSuggestion = suggestion;
 
-    // 设置新的建议内容
-    this.currentSuggestion = suggestion;
-    const contentDiv = this.suggestionDiv.querySelector("#suggestion-content");
-    if (contentDiv) {
-      contentDiv.textContent = suggestion;
+      // 侧边栏模式
+      if (!this.suggestionDiv) return;
+
+      const contentDiv = this.suggestionDiv.querySelector("#suggestion-content");
+      if (contentDiv) {
+        contentDiv.textContent = suggestion;
+      }
+      this.suggestionDiv.style.display = "block";
+      this.suggestionDiv.focus();
+    } else {
+      // 内联模式
+      try {
+        await Word.run(async (context) => {
+          // 清除之前的建议
+          const selection = context.document.getSelection();
+          const afterRange = selection.getRange(Word.RangeLocation.after);
+          afterRange.load("text");
+          await context.sync();
+
+          if (afterRange.text === this.currentSuggestion) {
+            afterRange.delete();
+            await context.sync();
+          }
+
+          // 插入新建议
+          const range = selection.insertText(suggestion, Word.InsertLocation.after);
+          range.font.italic = true;
+          range.font.color = "gray";
+          await context.sync();
+        });
+
+        // 保存当前建议
+        this.currentSuggestion = suggestion;
+      } catch (error) {
+        console.error("Failed to show inline suggestion:", error);
+      }
     }
-    this.suggestionDiv.style.display = "block";
-    
-    // 自动获取焦点
-    this.suggestionDiv.focus();
   }
 
   public async applySuggestion(): Promise<void> {
@@ -129,29 +166,92 @@ export class SuggestionManager {
     if (!suggestion) return;
 
     try {
-      await Word.run(async (context) => {
-        const selection = context.document.getSelection();
-        selection.insertText(suggestion, Word.InsertLocation.end);
-        await context.sync();
-        this.hideSuggestion();
-      });
+      if (this.defaultOptions.displayMode === "sidebar") {
+        // 侧边栏模式：插入文本
+        await Word.run(async (context) => {
+          const selection = context.document.getSelection();
+          selection.insertText(suggestion, Word.InsertLocation.end);
+          await context.sync();
+        });
+      } else {
+        // 内联模式：修改建议文本样式并移动光标
+        await Word.run(async (context) => {
+          const selection = context.document.getSelection();
+          const afterRange = selection.getRange(Word.RangeLocation.after);
+          afterRange.load("text");
+          await context.sync();
+
+          if (afterRange.text === suggestion) {
+            // 修改样式
+            afterRange.font.italic = false;
+            afterRange.font.color = "black";
+
+            // 移动光标到建议文本末尾
+            const endRange = afterRange.getRange(Word.RangeLocation.end);
+            endRange.select();
+            await context.sync();
+          }
+        });
+      }
     } catch (error) {
-      console.error("应用补全建议失败:", error);
+      console.error("Failed to apply suggestion:", error);
+    } finally {
+      await this.clearSuggestion();
     }
   }
 
-  private hideSuggestion(): void {
-    if (this.suggestionDiv) {
-      this.suggestionDiv.style.display = "none";
-      this.currentSuggestion = null;
+  private async clearSuggestion(): Promise<void> {
+    if (this.defaultOptions.displayMode === "sidebar") {
+      if (this.suggestionDiv) {
+        this.suggestionDiv.style.display = "none";
+      }
+    } else if (this.currentSuggestion) {
+      try {
+        await Word.run(async (context) => {
+          const selection = context.document.getSelection();
+          const range = selection.getRange(Word.RangeLocation.after);
+          range.load("text");
+          await context.sync();
+
+          if (range.text === this.currentSuggestion) {
+            range.delete();
+            await context.sync();
+          }
+        });
+      } catch (error) {
+        console.error("Failed to clear inline suggestion:", error);
+      }
     }
+    this.currentSuggestion = null;
   }
 
   public dispose(): void {
     if (this.suggestionDiv) {
-      document.body.removeChild(this.suggestionDiv);
+      const container = document.getElementById("suggestion-container");
+      if (container && container.contains(this.suggestionDiv)) {
+        container.removeChild(this.suggestionDiv);
+      }
       this.suggestionDiv = null;
     }
-    this.currentSuggestion = null;
+    void this.clearSuggestion();
+  }
+
+  public updateDisplayMode(mode: "sidebar" | "inline"): void {
+    if (mode === this.defaultOptions.displayMode) return;
+
+    void this.clearSuggestion();
+    this.defaultOptions.displayMode = mode;
+
+    if (mode === "sidebar") {
+      this.initializeSuggestionUI();
+    } else {
+      if (this.suggestionDiv) {
+        const container = document.getElementById("suggestion-container");
+        if (container && container.contains(this.suggestionDiv)) {
+          container.removeChild(this.suggestionDiv);
+        }
+        this.suggestionDiv = null;
+      }
+    }
   }
 }
