@@ -1,4 +1,4 @@
-/* global document, Word, console */
+/* global document, Word, console, HTMLElement */
 
 interface SuggestionOptions {
   position?: {
@@ -105,6 +105,14 @@ export class SuggestionManager {
 
     // 设置tabIndex使div可以获取焦点
     div.tabIndex = 0;
+
+    // 添加键盘事件监听
+    div.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault(); // 阻止默认行为
+        void this.applySuggestion();
+      }
+    });
 
     // 添加到建议框容器
     const container = document.getElementById("suggestion-container");
@@ -223,6 +231,10 @@ export class SuggestionManager {
       }
     }
     this.currentSuggestion = null;
+  }
+
+  public hasSuggestion(): boolean {
+    return this.currentSuggestion !== null;
   }
 
   public dispose(): void {

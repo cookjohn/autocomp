@@ -47,14 +47,55 @@ Office.onReady((info) => {
   }
 });
 
+interface ProviderConfig {
+  apiKey: string;
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  endpoint?: string;
+  systemPrompt?: string;
+}
+
+const PROVIDER_STORAGE_KEY = "providerConfigs";
+
+function getProviderConfigs(): Record<Provider, ProviderConfig> {
+  const saved = localStorage.getItem(PROVIDER_STORAGE_KEY);
+  return saved ? JSON.parse(saved) : {};
+}
+
+function saveProviderConfig(provider: Provider, config: ProviderConfig): void {
+  const configs = getProviderConfigs();
+  configs[provider] = config;
+  localStorage.setItem(PROVIDER_STORAGE_KEY, JSON.stringify(configs));
+}
+
+function loadProviderConfig(provider: Provider): ProviderConfig | null {
+  const configs = getProviderConfigs();
+  return configs[provider] || null;
+}
+
 async function updateModelList(): Promise<void> {
   try {
     const providerElement = document.getElementById("provider") as HTMLSelectElement;
     const apiKeyElement = document.getElementById("api-key") as HTMLInputElement;
     const modelElement = document.getElementById("model") as HTMLSelectElement;
+    const maxTokensElement = document.getElementById("max-tokens") as HTMLInputElement;
+    const temperatureElement = document.getElementById("temperature") as HTMLInputElement;
+    const systemPromptElement = document.getElementById("system-prompt") as HTMLTextAreaElement;
 
     const provider = providerElement.value as Provider;
     const apiKey = apiKeyElement.value;
+
+    // 加载保存的配置
+    const savedConfig = loadProviderConfig(provider);
+    if (savedConfig) {
+      apiKeyElement.value = savedConfig.apiKey;
+      maxTokensElement.value = savedConfig.maxTokens.toString();
+      temperatureElement.value = savedConfig.temperature.toString();
+      if (savedConfig.systemPrompt) {
+        systemPromptElement.value = savedConfig.systemPrompt;
+      }
+    }
 
     modelElement.innerHTML = "<option value=''>加载中...</option>";
 
@@ -62,19 +103,15 @@ async function updateModelList(): Promise<void> {
       llmService = new LLMService({
         provider,
         apiKey,
-        maxTokens: 100,
-        temperature: 0.7,
+        maxTokens: parseInt(maxTokensElement.value) || 100,
+        temperature: parseFloat(temperatureElement.value) || 0.7,
       });
 
       const models = await llmService.getAvailableModels();
       const sortedModels = models.sort((a, b) => a.name.localeCompare(b.name));
 
-      // 获取保存的配置中的模型
-      const savedConfig = localStorage.getItem("autoCompleteConfig");
-      const config = savedConfig ? (JSON.parse(savedConfig) as AutoCompleteConfig) : null;
-      const savedModel = config?.apiConfig.model || "";
-
       // 生成选项并选中保存的模型
+      const savedModel = savedConfig?.model || "";
       const options = sortedModels.map(
         (model) =>
           `<option value="${model.id}"${model.id === savedModel ? " selected" : ""}>${
@@ -99,35 +136,51 @@ async function updateModelList(): Promise<void> {
 }
 
 async function initializeForm(): Promise<void> {
-  const savedConfigStr = localStorage.getItem("autoCompleteConfig");
-  if (!savedConfigStr) {
-    return;
-  }
-
   try {
-    const config = JSON.parse(savedConfigStr) as AutoCompleteConfig;
-    const elements = {
-      "api-key": config.apiConfig.apiKey || "",
-      provider: config.apiConfig.provider || "openai",
-      "max-tokens": config.apiConfig.maxTokens?.toString() || "150",
-      temperature: config.apiConfig.temperature?.toString() || "0.7",
-      "trigger-mode": config.triggerMode || "manual",
-      "context-range": config.contextRange || "paragraph",
-      "custom-paragraphs": config.customParagraphs?.toString() || "3",
-      "max-context": config.maxContextLength?.toString() || "2000",
-      debounce: config.debounceMs?.toString() || "1000",
-      "trigger-delay": config.triggerDelayMs?.toString() || "2000",
-      "suggestion-position": config.suggestionPosition || "sidebar",
-      "system-prompt": config.apiConfig.systemPrompt || "",
-    };
+    // 先加载全局配置
+    const savedConfigStr = localStorage.getItem("autoCompleteConfig");
+    if (savedConfigStr) {
+      const config = JSON.parse(savedConfigStr) as AutoCompleteConfig;
+      const elements = {
+        provider: config.apiConfig.provider || "openai",
+        "trigger-mode": config.triggerMode || "manual",
+        "context-range": config.contextRange || "paragraph",
+        "custom-paragraphs": config.customParagraphs?.toString() || "3",
+        "max-context": config.maxContextLength?.toString() || "2000",
+        debounce: config.debounceMs?.toString() || "1000",
+        "trigger-delay": config.triggerDelayMs?.toString() || "2000",
+        "suggestion-position": config.suggestionPosition || "sidebar",
+      };
 
-    // 设置基本配置
-    Object.entries(elements).forEach(([id, value]) => {
-      const element = document.getElementById(id);
-      if (element) {
-        (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value;
+      // 设置非服务提供商相关的配置
+      Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+          (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value;
+        }
+      });
+
+      // 获取当前选中的服务提供商
+      const provider = (document.getElementById("provider") as HTMLSelectElement).value as Provider;
+
+      // 加载服务提供商特定的配置
+      const providerConfig = loadProviderConfig(provider);
+      if (providerConfig) {
+        const providerElements = {
+          "api-key": providerConfig.apiKey,
+          "max-tokens": providerConfig.maxTokens.toString(),
+          temperature: providerConfig.temperature.toString(),
+          "system-prompt": providerConfig.systemPrompt || "",
+        };
+
+        Object.entries(providerElements).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (element) {
+            (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value;
+          }
+        });
       }
-    });
+    }
 
     // 更新模型列表
     await updateModelList();
@@ -144,7 +197,9 @@ function getConfig(): AutoCompleteConfig {
     customParagraphs: parseInt((document.getElementById("custom-paragraphs") as HTMLInputElement).value) || 3,
     debounceMs: parseInt((document.getElementById("debounce") as HTMLInputElement).value) || 1000,
     triggerDelayMs: parseInt((document.getElementById("trigger-delay") as HTMLInputElement).value) || 2000,
-    suggestionPosition: (document.getElementById("suggestion-position") as HTMLSelectElement).value as "sidebar" | "inline",
+    suggestionPosition: (document.getElementById("suggestion-position") as HTMLSelectElement).value as
+      | "sidebar"
+      | "inline",
     apiConfig: {
       provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
       apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
@@ -159,7 +214,21 @@ function getConfig(): AutoCompleteConfig {
 async function startAutoComplete(): Promise<void> {
   try {
     const config = getConfig();
+
+    // 保存全局配置
     localStorage.setItem("autoCompleteConfig", JSON.stringify(config));
+
+    // 保存当前服务提供商的配置
+    const provider = config.apiConfig.provider;
+    const providerConfig: ProviderConfig = {
+      apiKey: config.apiConfig.apiKey,
+      model: config.apiConfig.model,
+      maxTokens: config.apiConfig.maxTokens,
+      temperature: config.apiConfig.temperature,
+      endpoint: config.apiConfig.endpoint,
+      systemPrompt: config.apiConfig.systemPrompt,
+    };
+    saveProviderConfig(provider, providerConfig);
 
     autoCompleteEngine = new AutoCompleteEngine(config);
     setAutoCompleteEngine(autoCompleteEngine);
@@ -174,6 +243,12 @@ async function startAutoComplete(): Promise<void> {
       startButton.style.display = "none";
       stopButton.style.display = "block";
       runningControls.style.display = "block";
+
+      // 在自动模式下隐藏触发补全按钮
+      const triggerButton = document.getElementById("trigger-completion");
+      if (triggerButton) {
+        triggerButton.style.display = config.triggerMode === "auto" ? "none" : "block";
+      }
 
       // 折叠配置表单
       const configContent = document.getElementById("config-content");
@@ -220,12 +295,26 @@ function stopAutoComplete(): void {
 
 async function triggerCompletion(): Promise<void> {
   try {
-    if (autoCompleteEngine) {
-      await autoCompleteEngine.triggerCompletion();
+    if (!autoCompleteEngine) {
+      showMessage("请先启动自动完成功能", "error");
+      return;
     }
+
+    const triggerButton = document.getElementById("trigger-completion");
+    if (triggerButton) {
+      triggerButton.setAttribute("disabled", "true");
+    }
+
+    await autoCompleteEngine.triggerCompletion();
+    showMessage("已触发补全", "success");
   } catch (error) {
     console.error("Failed to trigger completion:", error);
     showMessage("触发补全失败", "error");
+  } finally {
+    const triggerButton = document.getElementById("trigger-completion");
+    if (triggerButton) {
+      triggerButton.removeAttribute("disabled");
+    }
   }
 }
 
@@ -243,7 +332,28 @@ function saveConfig(): void {
     if (autoCompleteEngine) {
       const config = getConfig();
       autoCompleteEngine.updateConfig(config);
+      
+      // 保存全局配置
       localStorage.setItem("autoCompleteConfig", JSON.stringify(config));
+      
+      // 保存当前服务提供商的配置
+      const provider = config.apiConfig.provider;
+      const providerConfig: ProviderConfig = {
+        apiKey: config.apiConfig.apiKey,
+        model: config.apiConfig.model,
+        maxTokens: config.apiConfig.maxTokens,
+        temperature: config.apiConfig.temperature,
+        endpoint: config.apiConfig.endpoint,
+        systemPrompt: config.apiConfig.systemPrompt,
+      };
+      saveProviderConfig(provider, providerConfig);
+      
+      // 更新触发按钮显示状态
+      const triggerButton = document.getElementById("trigger-completion");
+      if (triggerButton) {
+        triggerButton.style.display = config.triggerMode === "auto" ? "none" : "block";
+      }
+      
       showMessage("配置已更新", "success");
     }
   } catch (error) {
