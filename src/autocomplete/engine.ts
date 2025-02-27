@@ -1,4 +1,4 @@
-/* global Office, Word, console, setTimeout */
+/* global Office, Word, console, clearTimeout, window */
 
 import { debounce } from "../utils/debounce";
 import { AutoCompleteContext } from "./context";
@@ -41,6 +41,7 @@ export class AutoCompleteEngine {
   private suggestionManager: SuggestionManager;
   private isProcessing = false;
   private debouncedRequestCompletion: (context: string) => Promise<string | null>;
+  private inputDebounceTimer: number | null = null; // 用于跟踪输入防抖定时器
 
   constructor(config: AutoCompleteConfig) {
     this.config = {
@@ -89,20 +90,19 @@ export class AutoCompleteEngine {
     }
   }
 
+  // 用于跟踪上一次内容
+  private lastParagraphText: string | null = null;
+
   /**
    * 处理文档变更事件
    */
   private async handleDocumentChange(): Promise<void> {
+    console.log("文档变更事件触发");
     try {
-      // 自动模式下延迟触发补全
-      if (this.config.triggerMode === "auto" && !this.isProcessing) {
-        setTimeout(() => {
-          void this.triggerCompletion();
-        }, this.config.triggerDelayMs);
-      }
-
-      // 检查是否是Tab键导致的变化，并且确保有建议存在
+      // 检查是否是Tab键导致的变化
+      let tabKeyHandled = false;
       if (this.suggestionManager.hasSuggestion()) {
+        console.log("有建议存在，检查是否是Tab键");
         await Word.run(async (context) => {
           const selection = context.document.getSelection();
           selection.load("text");
@@ -118,6 +118,64 @@ export class AutoCompleteEngine {
 
             // 应用建议
             await this.suggestionManager.applySuggestion();
+            tabKeyHandled = true;
+          }
+        });
+      }
+
+      // 如果处理了Tab键，不需要继续处理
+      if (tabKeyHandled) {
+        console.log("Tab键已处理，不检查内容变化");
+        return;
+      }
+
+      // 自动模式下检查内容变化并延迟触发补全
+      if (this.config.triggerMode === "auto" && !this.isProcessing) {
+        console.log("自动模式且未处理中，检查内容变化");
+        await Word.run(async (context) => {
+          const selection = context.document.getSelection();
+          const paragraph = selection.paragraphs.getFirst();
+          paragraph.load("text");
+          await context.sync();
+
+          const paragraphText = paragraph.text;
+          console.log("当前段落文本:", paragraphText);
+          console.log("上一次段落文本:", this.lastParagraphText);
+
+          // 检查内容是否变化
+          let shouldTrigger = true;
+
+          // 如果段落文本没有变化（内容相同）
+          if (this.lastParagraphText === paragraphText) {
+            console.log("内容未变化，不触发补全");
+            shouldTrigger = false;
+          } else {
+            // 内容发生变化，触发请求
+            console.log("内容已变化，触发补全");
+          }
+
+          // 更新上一次段落文本
+          this.lastParagraphText = paragraphText;
+          console.log("更新上一次段落文本:", this.lastParagraphText);
+
+          // 如果需要触发补全，使用防抖方式延迟执行
+          if (shouldTrigger) {
+            console.log("需要触发补全，使用防抖延迟执行");
+
+            // 清除之前的定时器（如果存在）
+            if (this.inputDebounceTimer !== null) {
+              console.log("清除之前的输入防抖定时器");
+              clearTimeout(this.inputDebounceTimer);
+              this.inputDebounceTimer = null;
+            }
+
+            // 设置新的定时器
+            console.log(`设置新的输入防抖定时器，等待${this.config.triggerDelayMs}ms后执行`);
+            this.inputDebounceTimer = window.setTimeout(() => {
+              console.log("输入防抖定时器触发，开始补全");
+              this.inputDebounceTimer = null;
+              void this.triggerCompletion();
+            }, this.config.triggerDelayMs);
           }
         });
       }
@@ -130,21 +188,38 @@ export class AutoCompleteEngine {
    * 触发补全请求
    */
   public async triggerCompletion(): Promise<void> {
-    if (this.isProcessing) return;
+    console.log("触发补全方法被调用");
+    if (this.isProcessing) {
+      console.log("已经在处理中，不重复触发");
+      return;
+    }
 
     try {
+      console.log("设置isProcessing = true");
       this.isProcessing = true;
 
+      // 如果有建议存在，先清除
+      if (this.suggestionManager.hasSuggestion()) {
+        console.log("有建议存在，先清除");
+        // 我们不直接调用clearSuggestion，因为showSuggestion会自动清除
+      }
+
       await Word.run(async (context) => {
+        console.log("开始获取上下文");
         // 获取当前上下文
         const contextContent = await this.context.getContext(context);
+        console.log("获取上下文成功，长度:", contextContent.length);
 
+        console.log("开始请求LLM补全");
         // 请求LLM补全
         const completion = await this.debouncedRequestCompletion(contextContent);
+        console.log("LLM补全请求结果:", completion ? "成功" : "失败");
 
         // 显示补全建议
         if (completion) {
+          console.log("开始显示补全建议");
           await this.suggestionManager.showSuggestion(completion);
+          console.log("显示补全建议成功");
         }
 
         await context.sync();
@@ -152,6 +227,7 @@ export class AutoCompleteEngine {
     } catch (error) {
       console.error("Completion request failed:", error);
     } finally {
+      console.log("设置isProcessing = false");
       this.isProcessing = false;
     }
   }
