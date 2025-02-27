@@ -20,7 +20,7 @@ export interface AutoCompleteConfig {
   triggerDelayMs: number; // 触发延迟时间
   suggestionPosition: "sidebar" | "inline"; // 建议显示位置
   apiConfig: {
-    provider: "openai" | "anthropic" | "openroute" | "gemini" | "custom";
+    provider: "openai" | "anthropic" | "openroute" | "gemini" | "custom" | "doubao" | "deepseek" | "vertex";
     maxTokens: number;
     temperature: number;
     systemPrompt?: string; // 自定义系统提示词
@@ -29,6 +29,9 @@ export interface AutoCompleteConfig {
       anthropic: ProviderConfig;
       openroute: ProviderConfig;
       gemini: ProviderConfig;
+      doubao: ProviderConfig;
+      deepseek: ProviderConfig;
+      vertex: ProviderConfig;
       custom: ProviderConfig;
     };
   };

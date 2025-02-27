@@ -6,7 +6,7 @@ import { LLMService } from "../autocomplete/api";
 import { setAutoCompleteEngine } from "../commands/commands";
 import { debounce } from "../utils/debounce";
 
-type Provider = "openai" | "anthropic" | "openroute" | "gemini" | "custom";
+type Provider = "openai" | "anthropic" | "openroute" | "gemini" | "custom" | "doubao" | "deepseek" | "vertex";
 type ContextRange = "paragraph" | "document" | "custom";
 
 let autoCompleteEngine: AutoCompleteEngine | null = null;
@@ -47,7 +47,7 @@ Office.onReady((info) => {
         if (apiKeyElement) {
           apiKeyElement.value = savedConfig.apiConfig.providerConfigs[currentProvider].apiKey || "";
         }
-
+        console.log(apiKeyElement.value);
         // 标记配置已更改
         ConfigManager.markConfigChanged();
 
@@ -192,6 +192,9 @@ const ConfigManager = {
           anthropic: { apiKey: "", model: "" },
           openroute: { apiKey: "", model: "" },
           gemini: { apiKey: "", model: "" },
+          doubao: { apiKey: "", model: "" },
+          deepseek: { apiKey: "", model: "" },
+          vertex: { apiKey: "", model: "" },
           custom: { apiKey: "", model: "" },
         },
       },
@@ -559,7 +562,7 @@ function toggleConfig(): void {
 
 // 已移除 saveConfig 函数，使用 ConfigManager.saveFormConfig 替代
 
-function showMessage(message: string, type: "success" | "error"): void {
+export function showMessage(message: string, type: "success" | "error"): void {
   const messageElement = document.getElementById("message");
   if (messageElement) {
     messageElement.textContent = message;

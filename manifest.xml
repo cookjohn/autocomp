@@ -5,7 +5,7 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" 
   xsi:type="TaskPaneApp">
   <Id>c12b22b0-80ad-44b2-bb90-230071bc929b</Id>
-  <Version>1.0.1.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>autoagent</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="LLM-Completion"/>
@@ -19,6 +19,9 @@
     <AppDomain>https://api.anthropic.com</AppDomain>
     <AppDomain>https://openrouter.ai</AppDomain>
     <AppDomain>https://generativelanguage.googleapis.com</AppDomain>
+    <AppDomain>https://api.deepseek.com</AppDomain>
+    <AppDomain>https://ark.cn-beijing.volces.com</AppDomain>
+    <AppDomain>https://us-central1-aiplatform.googleapis.com/</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Document"/>
