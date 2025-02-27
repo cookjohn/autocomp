@@ -1,6 +1,6 @@
 # Word文本自动补全插件 | Word Autocomplete Add-in
 
-这是一个基于AI的Word自动完成插件，可以根据当前文档中正在输入的内容智能预测并提供后续文本建议。
+这是一个基于AI的Word文本自动补全插件，可以根据当前文档中正在输入的内容智能预测并提供后续文本建议。
 
 This is an AI-powered Word autocomplete add-in that intelligently predicts and suggests subsequent text based on the current document content.
 
