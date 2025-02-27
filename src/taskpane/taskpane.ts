@@ -29,10 +29,29 @@ Office.onReady((info) => {
       document.getElementById("start-auto")?.addEventListener("click", startAutoComplete);
       document.getElementById("stop-auto")?.addEventListener("click", stopAutoComplete);
       document.getElementById("trigger-completion")?.addEventListener("click", triggerCompletion);
-      document.getElementById("save-config")?.addEventListener("click", saveConfig);
+      document.getElementById("save-config")?.addEventListener("click", () => {
+        ConfigManager.saveFormConfig();
+      });
 
       // 绑定provider变更事件
       document.getElementById("provider")?.addEventListener("change", () => {
+        // 获取当前选中的提供商
+        const providerElement = document.getElementById("provider") as HTMLSelectElement;
+        const currentProvider = (providerElement?.value as Provider) || "openai";
+
+        // 获取已保存的配置
+        const savedConfig = ConfigManager.getSavedConfig() || ConfigManager.getDefaultConfig();
+
+        // 更新 API 密钥输入框
+        const apiKeyElement = document.getElementById("api-key") as HTMLInputElement;
+        if (apiKeyElement) {
+          apiKeyElement.value = savedConfig.apiConfig.providerConfigs[currentProvider].apiKey || "";
+        }
+
+        // 标记配置已更改
+        ConfigManager.markConfigChanged();
+
+        // 更新模型列表
         void updateModelList();
       });
 
@@ -48,8 +67,12 @@ Office.onReady((info) => {
 
       // 绑定模型选择事件
       document.getElementById("model")?.addEventListener("change", () => {
-        const config = ConfigManager.getFormConfig();
-        ConfigManager.saveConfig(config);
+        // 移除自动保存，可以添加UI提示用户需要点击保存按钮
+        const saveButton = document.getElementById("save-config");
+        if (saveButton) {
+          saveButton.classList.add("highlight"); // 添加高亮样式提示用户保存
+        }
+        ConfigManager.markConfigChanged();
       });
 
       // 绑定配置折叠事件
@@ -60,45 +83,67 @@ Office.onReady((info) => {
 
 // 配置管理
 const ConfigManager = {
+  // 配置是否已更改但未保存
+  configChanged: false,
+
+  // 标记配置已更改
+  markConfigChanged(): void {
+    this.configChanged = true;
+    const saveButton = document.getElementById("save-config");
+    if (saveButton) {
+      saveButton.classList.add("highlight");
+    }
+  },
   // 获取当前表单配置
   getFormConfig(): AutoCompleteConfig {
+    // 获取当前选中的提供商
+    const providerElement = document.getElementById("provider") as HTMLSelectElement;
+    const currentProvider = (providerElement?.value as Provider) || "openai";
+
+    // 获取已保存的配置（如果有）
+    const savedConfig = this.getSavedConfig() || this.getDefaultConfig();
+
+    // 创建新的 providerConfigs，默认使用已保存的值
+    const providerConfigs = { ...savedConfig.apiConfig.providerConfigs };
+
+    // 安全地获取表单元素值的辅助函数
+    const getElementValue = (id: string, defaultValue: string = ""): string => {
+      const element = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+      return element?.value || defaultValue;
+    };
+
+    const getElementValueAsNumber = (id: string, defaultValue: number): number => {
+      const value = getElementValue(id);
+      const parsedValue = parseInt(value);
+      return isNaN(parsedValue) ? defaultValue : parsedValue;
+    };
+
+    const getElementValueAsFloat = (id: string, defaultValue: number): number => {
+      const value = getElementValue(id);
+      const parsedValue = parseFloat(value);
+      return isNaN(parsedValue) ? defaultValue : parsedValue;
+    };
+
+    // 只更新当前选中提供商的配置
+    providerConfigs[currentProvider] = {
+      apiKey: getElementValue("api-key"),
+      model: getElementValue("model"),
+    };
+
     return {
-      triggerMode: (document.getElementById("trigger-mode") as HTMLSelectElement).value as "auto" | "manual",
-      contextRange: (document.getElementById("context-range") as HTMLSelectElement).value as ContextRange,
-      maxContextLength: parseInt((document.getElementById("max-context") as HTMLInputElement).value) || 2000,
-      customParagraphs: parseInt((document.getElementById("custom-paragraphs") as HTMLInputElement).value) || 3,
-      debounceMs: parseInt((document.getElementById("debounce") as HTMLInputElement).value) || 1000,
-      triggerDelayMs: parseInt((document.getElementById("trigger-delay") as HTMLInputElement).value) || 2000,
-      suggestionPosition: (document.getElementById("suggestion-position") as HTMLSelectElement).value as
-        | "sidebar"
-        | "inline",
+      triggerMode: getElementValue("trigger-mode", "manual") as "auto" | "manual",
+      contextRange: getElementValue("context-range", "paragraph") as ContextRange,
+      maxContextLength: getElementValueAsNumber("max-context", 2000),
+      customParagraphs: getElementValueAsNumber("custom-paragraphs", 3),
+      debounceMs: getElementValueAsNumber("debounce", 1000),
+      triggerDelayMs: getElementValueAsNumber("trigger-delay", 2000),
+      suggestionPosition: getElementValue("suggestion-position", "sidebar") as "sidebar" | "inline",
       apiConfig: {
-        provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
-        maxTokens: parseInt((document.getElementById("max-tokens") as HTMLInputElement).value) || 150,
-        temperature: parseFloat((document.getElementById("temperature") as HTMLInputElement).value) || 0.7,
-        systemPrompt: (document.getElementById("system-prompt") as HTMLTextAreaElement).value,
-        providerConfigs: {
-          openai: {
-            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-            model: (document.getElementById("model") as HTMLSelectElement).value,
-          },
-          anthropic: {
-            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-            model: (document.getElementById("model") as HTMLSelectElement).value,
-          },
-          openroute: {
-            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-            model: (document.getElementById("model") as HTMLSelectElement).value,
-          },
-          gemini: {
-            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-            model: (document.getElementById("model") as HTMLSelectElement).value,
-          },
-          custom: {
-            apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-            model: (document.getElementById("model") as HTMLSelectElement).value,
-          },
-        },
+        provider: currentProvider,
+        maxTokens: getElementValueAsNumber("max-tokens", 150),
+        temperature: getElementValueAsFloat("temperature", 0.7),
+        systemPrompt: getElementValue("system-prompt", savedConfig.apiConfig.systemPrompt || ""),
+        providerConfigs: providerConfigs,
       },
     };
   },
@@ -158,6 +203,77 @@ const ConfigManager = {
     const provider = config.apiConfig.provider;
     return config.apiConfig.providerConfigs[provider];
   },
+
+  // 将配置应用到表单
+  applyConfigToForm(config: AutoCompleteConfig): void {
+    // 获取当前选中的提供商
+    const provider = config.apiConfig.provider;
+    const providerConfig = config.apiConfig.providerConfigs[provider];
+
+    // 设置表单值
+    const formConfig = {
+      provider: provider,
+      "trigger-mode": config.triggerMode,
+      "context-range": config.contextRange,
+      "custom-paragraphs": config.customParagraphs?.toString(),
+      "max-context": config.maxContextLength?.toString(),
+      debounce: config.debounceMs?.toString(),
+      "trigger-delay": config.triggerDelayMs?.toString(),
+      "suggestion-position": config.suggestionPosition,
+      "api-key": providerConfig.apiKey,
+      "max-tokens": config.apiConfig.maxTokens?.toString(),
+      temperature: config.apiConfig.temperature?.toString(),
+      "system-prompt": config.apiConfig.systemPrompt,
+    };
+
+    // 将配置应用到表单
+    Object.entries(formConfig).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value || "";
+      }
+    });
+  },
+
+  // 保存表单配置并更新引擎
+  saveFormConfig(): void {
+    try {
+      const config = this.getFormConfig();
+
+      // 保存配置
+      this.saveConfig(config);
+
+      // 如果引擎已初始化，更新引擎配置
+      if (autoCompleteEngine) {
+        autoCompleteEngine.updateConfig(config);
+
+        // 更新UI状态
+        const triggerButton = document.getElementById("trigger-completion");
+        if (triggerButton) {
+          triggerButton.style.display = config.triggerMode === "auto" ? "none" : "block";
+        }
+      }
+
+      // 重置配置变更标记
+      this.configChanged = false;
+      const saveButton = document.getElementById("save-config");
+      if (saveButton) {
+        saveButton.classList.remove("highlight");
+      }
+
+      showMessage("配置已更新", "success");
+    } catch (error) {
+      console.error("Failed to save config:", error);
+      showMessage("保存配置失败", "error");
+    }
+  },
+
+  // 初始化配置
+  async initializeConfig(): Promise<AutoCompleteConfig> {
+    const config = this.getSavedConfig() || this.getDefaultConfig();
+    this.applyConfigToForm(config);
+    return config;
+  },
 };
 
 async function updateModelList(): Promise<void> {
@@ -210,9 +326,9 @@ async function updateModelList(): Promise<void> {
     if (savedModel && sortedModels.some((model) => model.id === savedModel)) {
       modelElement.innerHTML = options.join("");
       modelElement.value = savedModel;
-      // 保存当前配置
-      config.apiConfig.providerConfigs[provider].model = savedModel;
-      ConfigManager.updateConfig(config);
+
+      // 不再自动保存配置，而是标记配置已更改
+      ConfigManager.markConfigChanged();
     } else if (savedModel) {
       // 如果上次使用的模型不在列表中，显示提示
       modelElement.innerHTML =
@@ -221,6 +337,13 @@ async function updateModelList(): Promise<void> {
     } else {
       // 首次使用或没有保存的模型
       modelElement.innerHTML = `<option value="">请选择模型</option>` + options.join("");
+      // 如果有可用模型，自动选择第一个
+      if (sortedModels.length > 0) {
+        setTimeout(() => {
+          modelElement.value = sortedModels[0].id;
+          ConfigManager.markConfigChanged();
+        }, 0);
+      }
     }
   } catch (error) {
     console.error("Failed to fetch models:", error);
@@ -229,89 +352,44 @@ async function updateModelList(): Promise<void> {
   }
 }
 
-async function loadSavedConfig(): Promise<void> {
-  const config = ConfigManager.getSavedConfig() || ConfigManager.getDefaultConfig();
-
-  // 设置表单值
-  const formConfig = {
-    provider: config.apiConfig.provider,
-    "trigger-mode": config.triggerMode,
-    "context-range": config.contextRange,
-    "custom-paragraphs": config.customParagraphs?.toString(),
-    "max-context": config.maxContextLength?.toString(),
-    debounce: config.debounceMs?.toString(),
-    "trigger-delay": config.triggerDelayMs?.toString(),
-    "suggestion-position": config.suggestionPosition,
-    "api-key": config.apiConfig.providerConfigs[config.apiConfig.provider].apiKey,
-    "max-tokens": config.apiConfig.maxTokens?.toString(),
-    temperature: config.apiConfig.temperature?.toString(),
-    "system-prompt": config.apiConfig.systemPrompt,
-  };
-
-  Object.entries(formConfig).forEach(([id, value]) => {
-    const element = document.getElementById(id);
-    if (element) {
-      (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value || "";
-    }
-  });
-}
+// 已移除 loadSavedConfig 函数，使用 ConfigManager.initializeConfig 替代
 
 async function initializeForm(): Promise<void> {
   try {
-    await loadSavedConfig();
+    // 初始化配置
+    await ConfigManager.initializeConfig();
 
     // 更新模型列表
     await updateModelList();
+    // 为所有表单元素添加变更监听
+    addChangeListenersToFormElements();
   } catch (error) {
     console.error("Failed to initialize form:", error);
   }
 }
 
-function getConfig(): AutoCompleteConfig {
-  return {
-    triggerMode: (document.getElementById("trigger-mode") as HTMLSelectElement).value as "auto" | "manual",
-    contextRange: (document.getElementById("context-range") as HTMLSelectElement).value as ContextRange,
-    maxContextLength: parseInt((document.getElementById("max-context") as HTMLInputElement).value) || 2000,
-    customParagraphs: parseInt((document.getElementById("custom-paragraphs") as HTMLInputElement).value) || 3,
-    debounceMs: parseInt((document.getElementById("debounce") as HTMLInputElement).value) || 1000,
-    triggerDelayMs: parseInt((document.getElementById("trigger-delay") as HTMLInputElement).value) || 2000,
-    suggestionPosition: (document.getElementById("suggestion-position") as HTMLSelectElement).value as
-      | "sidebar"
-      | "inline",
-    apiConfig: {
-      provider: (document.getElementById("provider") as HTMLSelectElement).value as Provider,
-      maxTokens: parseInt((document.getElementById("max-tokens") as HTMLInputElement).value) || 150,
-      temperature: parseFloat((document.getElementById("temperature") as HTMLInputElement).value) || 0.7,
-      systemPrompt: (document.getElementById("system-prompt") as HTMLTextAreaElement).value,
-      providerConfigs: {
-        openai: {
-          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-          model: (document.getElementById("model") as HTMLSelectElement).value,
-        },
-        anthropic: {
-          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-          model: (document.getElementById("model") as HTMLSelectElement).value,
-        },
-        openroute: {
-          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-          model: (document.getElementById("model") as HTMLSelectElement).value,
-        },
-        gemini: {
-          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-          model: (document.getElementById("model") as HTMLSelectElement).value,
-        },
-        custom: {
-          apiKey: (document.getElementById("api-key") as HTMLInputElement).value,
-          model: (document.getElementById("model") as HTMLSelectElement).value,
-        },
-      },
-    },
-  };
+// 为所有表单元素添加变更监听
+function addChangeListenersToFormElements(): void {
+  const formElements = document.querySelectorAll("#config-form input, #config-form select, #config-form textarea");
+  formElements.forEach((element) => {
+    element.addEventListener("change", () => {
+      ConfigManager.markConfigChanged();
+    });
+    // 对于文本输入，也监听input事件
+    if ((element instanceof HTMLInputElement && element.type === "text") || element instanceof HTMLTextAreaElement) {
+      element.addEventListener("input", () => {
+        ConfigManager.markConfigChanged();
+      });
+    }
+  });
 }
+
+// 已移除 getConfig 函数，使用 ConfigManager.getFormConfig 替代
 
 async function startAutoComplete(): Promise<void> {
   try {
-    const config = getConfig();
+    // 获取表单配置但不自动保存
+    const config = ConfigManager.getFormConfig();
 
     // 检查必要的配置
     const provider = config.apiConfig.provider;
@@ -323,8 +401,23 @@ async function startAutoComplete(): Promise<void> {
     }
 
     if (!providerConfig.model) {
-      showMessage("请选择模型", "error");
-      return;
+      // 尝试从模型列表中获取第一个模型
+      const modelElement = document.getElementById("model") as HTMLSelectElement;
+      if (modelElement && modelElement.options.length > 1) {
+        modelElement.selectedIndex = 1; // 选择第一个非空选项
+        // 更新配置中的模型
+        config.apiConfig.providerConfigs[provider].model = modelElement.value;
+        ConfigManager.markConfigChanged();
+      } else {
+        showMessage("请选择模型", "error");
+        return;
+      }
+    }
+
+    // 如果有未保存的配置更改，自动保存
+    if (ConfigManager.configChanged) {
+      ConfigManager.saveFormConfig();
+      showMessage("检测到配置已更改，已自动保存", "success");
     }
 
     // 禁用启动按钮
@@ -416,6 +509,8 @@ function stopAutoComplete(): void {
       (startButton.querySelector(".ms-Button-label") as HTMLElement).textContent = "启动";
       // 显示/隐藏相关元素
       startButton.style.display = "block";
+      // 确保移除disabled属性，使按钮可以点击
+      startButton.removeAttribute("disabled");
       stopButton.style.display = "none";
       configForm.style.display = "block";
       runningControls.style.display = "none";
@@ -462,28 +557,7 @@ function toggleConfig(): void {
   }
 }
 
-function saveConfig(): void {
-  try {
-    if (autoCompleteEngine) {
-      const config = getConfig();
-      autoCompleteEngine.updateConfig(config);
-
-      // 保存配置
-      ConfigManager.saveConfig(config);
-
-      // 更新触发按钮显示状态
-      const triggerButton = document.getElementById("trigger-completion");
-      if (triggerButton) {
-        triggerButton.style.display = config.triggerMode === "auto" ? "none" : "block";
-      }
-
-      showMessage("配置已更新", "success");
-    }
-  } catch (error) {
-    console.error("Failed to save config:", error);
-    showMessage("保存配置失败", "error");
-  }
-}
+// 已移除 saveConfig 函数，使用 ConfigManager.saveFormConfig 替代
 
 function showMessage(message: string, type: "success" | "error"): void {
   const messageElement = document.getElementById("message");

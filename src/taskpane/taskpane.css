@@ -238,3 +238,16 @@ textarea.ms-TextField-field {
 .ms-Button:active {
     transform: translateY(1px);
 }
+
+/* 高亮样式 - 用于提示用户需要保存配置 */
+.highlight {
+    animation: pulse 1.5s infinite;
+    background-color: #f0f7ff !important;
+    border-color: #0078d4 !important;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(0, 120, 212, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 120, 212, 0); }
+}
